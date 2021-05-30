@@ -1,40 +1,21 @@
-import { NextFunction, Request, Response } from 'express';
-import { verify } from 'jsonwebtoken';
+import { Router } from 'express';
+import { celebrate, Joi, Segments } from 'celebrate';
 
-import AppError from '@shared/errors/AppError';
+import UsersController from '../controllers/UserController';
 
-import authConfig from '@config/auth';
+const usersRouter = Router();
+const usersController = new UsersController();
 
-interface ITokenPayload {
-  iat: number;
-  exp: number;
-  sub: string;
-}
+usersRouter.post(
+  '/',
+  celebrate({
+    [Segments.BODY]: {
+      name: Joi.string().required(),
+      email: Joi.string().email().required(),
+      password: Joi.string().required(),
+    },
+  }),
+  usersController.create,
+);
 
-export default function ensureAuthenticated(
-  request: Request,
-  response: Response,
-  next: NextFunction,
-): void {
-  const authHeader = request.headers.authorization;
-
-  if (!authHeader) {
-    throw new AppError('JWT token is missing', 401);
-  }
-
-  const [, token] = authHeader.split(' ');
-
-  try {
-    const decoded = verify(token, authConfig.jwt.secret);
-
-    const { sub } = decoded as ITokenPayload;
-
-    request.body.user = {
-      id: sub,
-    };
-
-    return next();
-  } catch {
-    throw new AppError('Invalid JWT token', 401);
-  }
-}
+export default usersRouter;
